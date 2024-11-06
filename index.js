@@ -8,9 +8,10 @@ const PORT = 3000;
 // Middleware para parsing de JSON
 app.use(bodyParser.json());
 
-// Inicializar o Firebase Admin SDK
-const serviceAccount = require("./adminasdk/petcardio-9cabf-firebase-adminsdk-yrafq-831960aa46.json");
+// Obter a variável de ambiente com as credenciais
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 
+// Inicializar o Firebase Admin SDK
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
@@ -38,9 +39,6 @@ app.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // Aqui, você precisa autenticar o usuário via Firebase Authentication SDK no frontend
-    // Depois, enviar o token JWT gerado pelo login para essa rota, onde você verificará o token.
-
     const user = await admin.auth().getUserByEmail(email);
 
     res.status(200).json({ message: "Login bem-sucedido", user });
