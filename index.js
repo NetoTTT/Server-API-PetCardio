@@ -38,15 +38,18 @@ app.post("/signup", async (req, res) => {
 
 // Rota para login de usuário (com verificação de credenciais)
 app.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+  const { token } = req.body;
 
   try {
-    const user = await admin.auth().getUserByEmail(email);
+    // Verifique o token ID do Firebase
+    const decodedToken = await auth.verifyIdToken(token);
+    const user = await auth.getUser(decodedToken.uid);
     res.status(200).json({ message: "Login bem-sucedido", user });
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    res.status(400).json({ message: "Token inválido ou expirado" });
   }
 });
+
 
 // Inicializar o servidor
 app.listen(PORT, () => {
