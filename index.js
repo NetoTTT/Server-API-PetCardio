@@ -26,22 +26,28 @@ app.post("/signup", async (req, res) => {
   const { email, password } = req.body;
 
   try {
-    // Verifica se o email já está cadastrado
-    const existingUser = await auth.getUserByEmail(email);
-    if (existingUser) {
-      // Se o email já existe, retorna erro
+    // Tenta verificar se o e-mail já está registrado
+    try {
+      await auth.getUserByEmail(email);
+      // Se o usuário for encontrado, significa que o e-mail já está registrado
       return res.status(400).json({ message: "Email já cadastrado!" });
+    } catch (error) {
+      // Se o erro for de 'user not found', significa que o e-mail não está registrado
+      if (error.code === 'auth/user-not-found') {
+        // Se o e-mail não existir, cria o novo usuário
+        const user = await auth.createUser({
+          email,
+          password,
+        });
+
+        return res.status(201).json({ message: "Usuário criado com sucesso", user });
+      } else {
+        // Caso ocorra outro erro, retorne uma resposta genérica de erro
+        throw error;
+      }
     }
-
-    // Se o email não existe, cria o novo usuário
-    const user = await auth.createUser({
-      email,
-      password,
-    });
-
-    res.status(201).json({ message: "Usuário criado com sucesso", user });
   } catch (error) {
-    // Trata qualquer outro erro, incluindo problemas ao verificar o usuário
+    // Trata qualquer erro inesperado
     res.status(400).json({ message: error.message });
   }
 });
