@@ -26,12 +26,22 @@ app.post("/signup", async (req, res) => {
   const { email, password } = req.body;
 
   try {
+    // Verifica se o email já está cadastrado
+    const existingUser = await auth.getUserByEmail(email);
+    if (existingUser) {
+      // Se o email já existe, retorna erro
+      return res.status(400).json({ message: "Email já cadastrado!" });
+    }
+
+    // Se o email não existe, cria o novo usuário
     const user = await auth.createUser({
       email,
       password,
     });
+
     res.status(201).json({ message: "Usuário criado com sucesso", user });
   } catch (error) {
+    // Trata qualquer outro erro, incluindo problemas ao verificar o usuário
     res.status(400).json({ message: error.message });
   }
 });
