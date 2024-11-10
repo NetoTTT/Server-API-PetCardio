@@ -18,6 +18,7 @@ const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 // Inicializar o Firebase Admin SDK
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
+  databaseURL: 'https://petcardio-9cabf-default-rtdb.firebaseio.com'
 });
 
 // Inicializar os serviços do Firebase
