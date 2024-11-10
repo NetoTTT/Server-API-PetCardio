@@ -2,7 +2,6 @@ const express = require("express");
 const admin = require("firebase-admin");
 const bodyParser = require("body-parser");
 const cors = require("cors");
-const WebSocket = require('ws');
 
 const app = express();
 const PORT = 3000;
@@ -21,7 +20,7 @@ const auth = admin.auth();
 const db = admin.database();
 const ecgRef = db.ref("/ecgData");
 
-const clients = [];
+let clients = [];
 
 // Rota para cadastro de usuário
 app.post("/signup", async (req, res) => {
@@ -73,34 +72,32 @@ app.get("/ecg", async (req, res) => {
   }
 });
 
-// Configuração do WebSocket
-const wss = new WebSocket.Server({ server: app });
+// Rota para gerenciar a conexão SSE
+app.get("/events", (req, res) => {
+  // Configura os headers necessários para SSE
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  
+  // Adiciona o cliente à lista
+  clients.push(res);
 
-wss.on('connection', ws => {
-  console.log('Novo cliente conectado');
+  // Envia uma mensagem inicial para o cliente
+  res.write(`data: ${JSON.stringify({ message: 'Conexão SSE estabelecida' })}\n\n`);
 
-  // Enviar dados para o cliente
-  ws.send(JSON.stringify({ message: 'Conexão WebSocket estabelecida' }));
-
-  // Escutar por mensagens do cliente (se necessário)
-  ws.on('message', message => {
-    console.log('Mensagem recebida:', message);
-  });
-
-  // Escutar por desconexão
-  ws.on('close', () => {
-    console.log('Cliente desconectado');
+  // Remove o cliente da lista quando a conexão é fechada
+  req.on('close', () => {
+    clients = clients.filter(client => client !== res);
   });
 });
 
-// Escutar novos dados de ECG e enviar para os clientes WebSocket
+// Escutar novos dados de ECG e enviar para os clientes SSE
 ecgRef.orderByChild("timestamp").limitToLast(1).on("child_added", (snapshot) => {
   const newData = snapshot.val();
   if (newData) {
-    wss.clients.forEach(client => {
-      if (client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify(newData)); // Envia os dados para o cliente
-      }
+    // Envia os novos dados para todos os clientes conectados
+    clients.forEach(client => {
+      client.write(`data: ${JSON.stringify(newData)}\n\n`);
     });
   }
 });
