@@ -7,7 +7,7 @@ const app = express();
 const PORT = 3000;
 
 app.use(bodyParser.json());
-app.use(cors({ origin: 'https://petcardio-9cabf.web.app' }));
+app.use(cors());
 
 // Configuração do Firebase
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
@@ -98,8 +98,9 @@ app.get("/ecg/stream", (req, res) => {
 
 // Função para enviar dados para todos os clientes conectados via SSE
 function sendDataToClients(data) {
+  const jsonData = JSON.stringify(data); // Transforma o dado em JSON
   clients.forEach(client => {
-    client.write(`data: ${JSON.stringify(data)}\n\n`);
+    client.write(`data: ${jsonData}\n\n`);
   });
 }
 
