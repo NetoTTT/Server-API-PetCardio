@@ -2,6 +2,7 @@ const express = require("express");
 const admin = require("firebase-admin");
 const bodyParser = require("body-parser");
 const cors = require("cors");
+const WebSocket = require('ws');
 
 const app = express();
 const PORT = 3000;
@@ -63,7 +64,7 @@ app.get("/ecg", async (req, res) => {
     const snapshot = await ecgRef.orderByChild("timestamp").limitToLast(1).once("value");
     const data = snapshot.val();
     if (data) {
-      res.status(200).json(data);
+      res.status(200).json({ message: "Dados encontrados", data });
     } else {
       res.status(404).json({ message: "Nenhum dado encontrado." });
     }
@@ -72,44 +73,35 @@ app.get("/ecg", async (req, res) => {
   }
 });
 
-// Rota para abrir uma conexão SSE e enviar dados em tempo real
-app.get("/ecg/stream", (req, res) => {
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
+// Configuração do WebSocket
+const wss = new WebSocket.Server({ server: app });
 
-  // Envia um "ping" inicial para abrir a conexão
-  res.write('data: Conexão SSE aberta\n\n');
+wss.on('connection', ws => {
+  console.log('Novo cliente conectado');
 
-  // Adiciona o cliente à lista de SSE
-  clients.push(res);
+  // Enviar dados para o cliente
+  ws.send(JSON.stringify({ message: 'Conexão WebSocket estabelecida' }));
 
-  // Mantém a conexão viva enviando "pings" periódicos
-  const keepAliveInterval = setInterval(() => {
-    res.write('data: \n\n'); // Envia um ping vazio a cada 20 segundos
-  }, 20000);
+  // Escutar por mensagens do cliente (se necessário)
+  ws.on('message', message => {
+    console.log('Mensagem recebida:', message);
+  });
 
-  // Remove o cliente ao desconectar
-  req.on('close', () => {
-    clearInterval(keepAliveInterval); // Limpa o intervalo quando o cliente desconecta
-    clients.splice(clients.indexOf(res), 1);
+  // Escutar por desconexão
+  ws.on('close', () => {
+    console.log('Cliente desconectado');
   });
 });
 
-// Função para enviar dados para todos os clientes conectados via SSE
-function sendDataToClients(data) {
-  const jsonData = JSON.stringify(data); // Transforma o dado em JSON
-  clients.forEach(client => {
-    client.write(`data: ${jsonData}\n\n`);
-  });
-}
-
-// Escutar novos dados de ECG em tempo real e enviar para os clientes SSE
+// Escutar novos dados de ECG e enviar para os clientes WebSocket
 ecgRef.orderByChild("timestamp").limitToLast(1).on("child_added", (snapshot) => {
   const newData = snapshot.val();
   if (newData) {
-    console.log("Novo dado ECG recebido:", newData);
-    sendDataToClients(newData); // Envia os novos dados para os clientes conectados via SSE
+    wss.clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify(newData)); // Envia os dados para o cliente
+      }
+    });
   }
 });
 
