@@ -15,6 +15,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.21.1",
     "firebase-admin": "^12.7.0",
+    "json2csv": "^6.0.0-alpha.2",
     "ws": "^8.18.0"
   }
 }

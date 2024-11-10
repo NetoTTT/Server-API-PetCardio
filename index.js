@@ -2,6 +2,9 @@ const express = require("express");
 const admin = require("firebase-admin");
 const bodyParser = require("body-parser");
 const cors = require("cors");
+const { Parser } = require('json2csv');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const PORT = 3000;
@@ -57,13 +60,22 @@ app.post("/login", async (req, res) => {
   }
 });
 
-// Rota para pegar o dado mais recente de ECG
+// Rota para pegar os dados de ECG e convertê-los para CSV
 app.get("/ecg", async (req, res) => {
   try {
-    const snapshot = await ecgRef.orderByChild("timestamp").limitToLast(1).once("value");
+    const snapshot = await ecgRef.orderByChild("timestamp").once("value");
     const data = snapshot.val();
+
     if (data) {
-      res.status(200).json({ message: "Dados encontrados", data });
+      // Convertendo os dados JSON para CSV
+      const jsonData = Object.values(data); // Converte o objeto em um array
+      const parser = new Parser();
+      const csv = parser.parse(jsonData);
+
+      // Definindo os headers para o envio do CSV como um arquivo
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename=ecg_data.csv');
+      res.status(200).send(csv);
     } else {
       res.status(404).json({ message: "Nenhum dado encontrado." });
     }
