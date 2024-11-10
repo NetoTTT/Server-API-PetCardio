@@ -1,13 +1,6 @@
+// routes/ecg.js
 const express = require("express");
-const admin = require("firebase-admin");  // Importa o Firebase Admin SDK
-const { database } = require("firebase-admin"); // Importa a função database diretamente
-
-// Configuração do Firebase
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT); // Certifique-se de configurar corretamente a variável de ambiente
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  databaseURL: 'https://petcardio-9cabf-default-rtdb.firebaseio.com' // Substitua com seu próprio URL do Firebase Realtime Database
-});
+const { database } = require("firebase-admin");  // Agora já é possível usar o Firebase aqui diretamente
 
 const router = express.Router();
 const ecgRef = database().ref('ecgData'); // Referência para a coleção de ECG no Firebase

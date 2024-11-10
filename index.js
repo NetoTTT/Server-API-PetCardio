@@ -1,3 +1,4 @@
+// index.js
 const express = require("express");
 const admin = require("firebase-admin");
 const bodyParser = require("body-parser");
@@ -13,10 +14,12 @@ app.use(cors());
 
 // Configuração do Firebase
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  databaseURL: 'https://petcardio-9cabf-default-rtdb.firebaseio.com'
-});
+if (!admin.apps.length) { // Verifica se o Firebase já foi inicializado
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount),
+    databaseURL: 'https://petcardio-9cabf-default-rtdb.firebaseio.com'
+  });
+}
 
 // Usar as rotas de autenticação e ECG
 app.use("/auth", authRoutes); // Rota para autenticação
