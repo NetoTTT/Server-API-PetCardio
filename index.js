@@ -22,41 +22,95 @@ admin.initializeApp({
 const auth = admin.auth();
 const db = admin.database();
 const ecgRef = db.ref("/ecgData");
+const dbfire = admin.firestore();
 
 let clients = [];
 
 // Rota para cadastro de usuário
 app.post("/signup", async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, userType, cpf } = req.body;  // Incluindo o cpf no corpo da requisição para veterinário
   try {
-    try {
-      await auth.getUserByEmail(email);
-      return res.status(400).json({ message: "Email já cadastrado!" });
-    } catch (error) {
-      if (error.code === 'auth/user-not-found') {
-        const user = await auth.createUser({
-          email,
-          password,
-        });
-        return res.status(201).json({ message: "Usuário criado com sucesso", user });
-      } else {
-        throw error;
-      }
+    // Verifique se o tipo de usuário é válido
+    const validUserTypes = ["petDono", "veterinario"];
+    if (!validUserTypes.includes(userType)) {
+      return res.status(400).json({ message: "Tipo de usuário inválido!" });
     }
+
+    // Se o tipo de usuário for "veterinario", verifique se o usuário atual tem permissão para criar esse tipo de usuário
+    if (userType === "veterinario") {
+      // Verifica se o usuário autenticado tem permissão de 'admin'
+      if (!req.user || req.user.role !== "admin") {  // Supondo que req.user seja o usuário autenticado
+        return res.status(403).json({ message: "Você não tem permissão para criar um veterinário!" });
+      }
+
+      // Verifica se o CPF foi fornecido para o veterinário
+      if (!cpf) {
+        return res.status(400).json({ message: "CPF é obrigatório para cadastro de veterinário!" });
+      }
+
+      // Aqui, você pode validar o CPF de acordo com sua lógica, se necessário.
+    }
+
+    // Agora, criamos o usuário no Firebase Authentication
+    const userRecord = await admin.auth().createUser({
+      email,
+      password,
+    });
+
+    // Armazenando o tipo de usuário no Firestore na coleção "users"
+    const role = userType === "veterinario" ? "veterinario" : "petDono"; // Atribui o tipo de 'role' baseado no tipo de usuário
+    const userData = {
+      userType,  // 'petDono' ou 'veterinario'
+      email,
+      role, // Atribuindo 'role' conforme o tipo
+    };
+
+    // Se for veterinário, adicionar o CPF
+    if (userType === "veterinario") {
+      userData.cpf = cpf;
+    }
+
+    await dbfire.collection("users").doc(userRecord.uid).set(userData);
+
+    res.status(201).json({ message: "Usuário criado com sucesso", user: userRecord });
   } catch (error) {
+    console.error(error);
     res.status(400).json({ message: error.message });
   }
 });
 
-// Rota para login de usuário
 app.post("/login", async (req, res) => {
-  const { token } = req.body;
+  const { token } = req.body;  // O token deve ser enviado do front-end
+
   try {
-    const decodedToken = await auth.verifyIdToken(token);
-    const user = await auth.getUser(decodedToken.uid);
-    res.status(200).json({ message: "Login bem-sucedido", user });
+    // Verifica e valida o token JWT do Firebase
+    const decodedToken = await admin.auth().verifyIdToken(token);
+    const uid = decodedToken.uid;  // Pega o UID do usuário a partir do token
+
+    // Verifica o usuário no Firebase Authentication
+    const userRecord = await admin.auth().getUser(uid);
+
+    // Verifica o tipo de usuário no Firestore
+    const userDoc = await dbfire.collection("users").doc(userRecord.uid).get();
+    const userData = userDoc.data();
+
+    if (!userData) {
+      return res.status(404).json({ message: "Usuário não encontrado no Firestore" });
+    }
+
+    // Aqui, você pode verificar o tipo de usuário (petDono ou veterinario)
+    if (userData.userType === 'veterinario') {
+      // Se for um veterinário, redireciona para a página de veterinário
+      res.status(200).json({ message: "Login realizado com sucesso", userType: 'veterinario' });
+    } else if (userData.userType === 'petDono') {
+      // Se for um dono de pet, redireciona para a página de dono de pet
+      res.status(200).json({ message: "Login realizado com sucesso", userType: 'petDono' });
+    } else {
+      res.status(400).json({ message: "Tipo de usuário inválido" });
+    }
+    
   } catch (error) {
-    res.status(400).json({ message: "Token inválido ou expirado" });
+    res.status(400).json({ message: "Erro ao autenticar o usuário: " + error.message });
   }
 });
 
@@ -90,7 +144,7 @@ app.get("/events", (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
-  
+
   // Adiciona o cliente à lista
   clients.push(res);
 
