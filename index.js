@@ -108,7 +108,7 @@ app.post("/login", async (req, res) => {
     } else {
       res.status(400).json({ message: "Tipo de usuário inválido" });
     }
-    
+
   } catch (error) {
     res.status(400).json({ message: "Erro ao autenticar o usuário: " + error.message });
   }
@@ -170,19 +170,33 @@ ecgRef.orderByChild("timestamp").limitToLast(1).on("child_added", (snapshot) => 
 
 // Nova rota para verificar a senha de administrador
 app.post("/admin/auth", async (req, res) => {
-  const { password } = req.body;
+  const { email, password } = req.body;
 
   try {
+    // Verifique se o email existe no Firebase Authentication
+    const userRecord = await admin.auth().getUserByEmail(email);
 
-    if (password === 'admin_123') {
+    // Verifique se o usuário está presente na coleção 'users' e se tem o 'role' igual a 'admin'
+    const userDoc = await dbfire.collection("users").doc(userRecord.uid).get();
+    const userData = userDoc.data();
+
+    if (!userData) {
+      return res.status(404).json({ message: "Usuário não encontrado no Firestore" });
+    }
+
+    if (userData.role === 'admin' && password === 'admin_123') {
+      // Senha correta e o usuário tem o role de 'admin'
       res.status(200).json({ message: "Senha correta" });
     } else {
-      res.status(401).json({ message: "Senha incorreta" });
+      // Senha incorreta ou o usuário não é admin
+      res.status(401).json({ message: "Senha incorreta ou você não tem permissão de admin" });
     }
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
+
 
 
 // Inicializar o servidor
