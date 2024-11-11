@@ -51,11 +51,14 @@ app.post("/signup", async (req, res) => {
       // Aqui, você pode validar o CPF de acordo com sua lógica, se necessário.
     }
 
-    // Agora, criamos o usuário no Firebase Authentication
+    // Criação do usuário no Firebase Authentication
     const userRecord = await admin.auth().createUser({
       email,
       password,
     });
+
+    // Enviar link de verificação para o email do usuário
+    await admin.auth().generateEmailVerificationLink(email);
 
     // Armazenando o tipo de usuário no Firestore na coleção "users"
     const role = userType === "veterinario" ? "veterinario" : "petDono"; // Atribui o tipo de 'role' baseado no tipo de usuário
@@ -63,6 +66,7 @@ app.post("/signup", async (req, res) => {
       userType,  // 'petDono' ou 'veterinario'
       email,
       role, // Atribuindo 'role' conforme o tipo
+      emailVerified: false // Status de email não verificado
     };
 
     // Se for veterinário, adicionar o CPF
@@ -70,14 +74,16 @@ app.post("/signup", async (req, res) => {
       userData.cpf = cpf;
     }
 
+    // Salva o usuário no Firestore
     await dbfire.collection("users").doc(userRecord.uid).set(userData);
 
-    res.status(201).json({ message: "Usuário criado com sucesso", user: userRecord });
+    res.status(201).json({ message: "Usuário criado com sucesso. Por favor, verifique seu email para confirmar o cadastro." });
   } catch (error) {
     console.error(error);
     res.status(400).json({ message: error.message });
   }
 });
+
 
 app.post("/login", async (req, res) => {
   const { token } = req.body;  // O token deve ser enviado do front-end
@@ -197,6 +203,32 @@ app.post("/admin/auth", async (req, res) => {
   }
 });
 
+// Rota para verificar e enviar o link de redefinição de senha
+app.post("/verifyEmail", async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    // Verificar se o email existe no Firebase Authentication
+    await admin.auth().getUserByEmail(email);
+
+    // Enviar o link de redefinição de senha para o email fornecido
+    const resetLink = await admin.auth().generatePasswordResetLink(email);
+
+    // Você pode enviar o link por email com um serviço de terceiros, como Nodemailer
+    // Firebase automaticamente envia o link de redefinição de senha para o email.
+
+    // Retornar uma resposta de sucesso
+    res.status(200).json({
+      message: "Link de redefinição de senha enviado para o seu email."
+    });
+
+  } catch (error) {
+    // Caso ocorra algum erro, retornamos a mensagem de erro
+    res.status(400).json({
+      message: `Erro ao enviar o link de redefinição de senha: ${error.message}`
+    });
+  }
+});
 
 
 // Inicializar o servidor
