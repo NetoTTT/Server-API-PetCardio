@@ -114,6 +114,23 @@ ecgRef.orderByChild("timestamp").limitToLast(1).on("child_added", (snapshot) => 
   }
 });
 
+// Nova rota para verificar a senha de administrador
+app.post("/admin/auth", async (req, res) => {
+  const { password } = req.body;
+
+  try {
+
+    if (password === 'admin_123') {
+      res.status(200).json({ message: "Senha correta" });
+    } else {
+      res.status(401).json({ message: "Senha incorreta" });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+
 // Inicializar o servidor
 app.listen(PORT, () => {
   console.log(`Servidor rodando na porta ${PORT}`);
