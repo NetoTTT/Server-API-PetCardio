@@ -137,6 +137,9 @@ app.post("/login", async (req, res) => {
 
       // Verifica se já passou 5 minutos desde o último envio
       if (currentTime - lastVerificationSent >= fiveMinutes) {
+        // Loga o email para o qual a verificação será enviada
+        console.log("Enviando email de verificação para:", userRecord.email);
+
         // Envia o email de verificação
         const verificationLink = await admin
           .auth()
