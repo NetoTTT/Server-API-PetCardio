@@ -133,6 +133,9 @@ app.post("/login", async (req, res) => {
         .json({ message: "Usuário não encontrado no Firestore" });
     }
 
+    // Log para depuração
+    console.log("Tipo de usuário obtido:", userData.userType);
+
     // Verifica o tipo de usuário (petDono ou veterinario)
     if (userData.userType === "veterinario") {
       // Redireciona para a página de veterinário
@@ -147,6 +150,7 @@ app.post("/login", async (req, res) => {
         userType: "petDono",
       });
     } else {
+      console.log("Tipo de usuário inválido:", userData.userType); // Adicionando log para depuração
       return res.status(400).json({ message: "Tipo de usuário inválido" });
     }
   } catch (error) {
