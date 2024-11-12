@@ -128,6 +128,7 @@ app.post("/login", async (req, res) => {
 
     // Log para depuração
     console.log("Tipo de usuário obtido:", userData.userType);
+    console.log("Email do Usuario:", userRecord.email);
 
     // Verifica se o email do usuário foi verificado
     if (!userRecord.emailVerified) {
