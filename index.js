@@ -116,13 +116,6 @@ app.post("/login", async (req, res) => {
     // Verifica o usuário no Firebase Authentication
     const userRecord = await admin.auth().getUser(uid);
 
-    // Verifica se o email do usuário foi verificado
-    if (!userRecord.emailVerified) {
-      return res.status(403).json({
-        message: "Por favor, verifique seu email para fazer login.",
-      });
-    }
-
     // Verifica o tipo de usuário no Firestore
     const userDoc = await dbfire.collection("users").doc(userRecord.uid).get();
     const userData = userDoc.data();
@@ -136,21 +129,46 @@ app.post("/login", async (req, res) => {
     // Log para depuração
     console.log("Tipo de usuário obtido:", userData.userType);
 
+    // Verifica se o email do usuário foi verificado
+    if (!userRecord.emailVerified) {
+      const lastVerificationSent = userData.lastVerificationSent || 0;
+      const currentTime = Date.now();
+      const fiveMinutes = 5 * 60 * 1000;
+
+      // Verifica se já passou 5 minutos desde o último envio
+      if (currentTime - lastVerificationSent >= fiveMinutes) {
+        // Envia o email de verificação
+        const verificationLink = await admin
+          .auth()
+          .generateEmailVerificationLink(userRecord.email);
+        await dbfire.collection("users").doc(userRecord.uid).update({
+          lastVerificationSent: currentTime,
+        });
+        return res.status(403).json({
+          message:
+            "Por favor, verifique seu email para fazer login. Um email de verificação foi enviado.",
+        });
+      } else {
+        return res.status(403).json({
+          message:
+            "Um email de verificação já foi enviado recentemente. Por favor, verifique seu email.",
+        });
+      }
+    }
+
     // Verifica o tipo de usuário (petDono ou veterinario)
     if (userData.userType === "veterinario") {
-      // Redireciona para a página de veterinário
       return res.status(200).json({
         message: "Login realizado com sucesso",
         userType: "veterinario",
       });
     } else if (userData.userType === "petDono") {
-      // Redireciona para a página de dono de pet
       return res.status(200).json({
         message: "Login realizado com sucesso",
         userType: "petDono",
       });
     } else {
-      console.log("Tipo de usuário inválido:", userData.userType); // Adicionando log para depuração
+      console.log("Tipo de usuário inválido:", userData.userType);
       return res.status(400).json({ message: "Tipo de usuário inválido" });
     }
   } catch (error) {
