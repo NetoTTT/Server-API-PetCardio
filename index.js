@@ -203,27 +203,71 @@ app.post("/admin/auth", async (req, res) => {
   }
 });
 
-// Rota para verificar e enviar o link de redefinição de senha
+// Rota para verificar o e-mail e enviar o link de verificação
 app.post("/verifyEmail", async (req, res) => {
   const { email } = req.body;
 
+  // Verificação do formato do email
+  if (!email || !email.includes('@')) {
+    return res.status(400).json({
+      message: "Por favor, forneça um e-mail válido."
+    });
+  }
+
   try {
-    // Verificar se o email existe no Firebase Authentication
-    await admin.auth().getUserByEmail(email);
+    // Verificar se o e-mail existe no Firebase Authentication
+    const userRecord = await admin.auth().getUserByEmail(email);
 
-    // Enviar o link de redefinição de senha para o email fornecido
-    const resetLink = await admin.auth().generatePasswordResetLink(email);
+    // Enviar o link de verificação para o e-mail fornecido
+    const verificationLink = await admin.auth().generateEmailVerificationLink(email);
 
-    // Você pode enviar o link por email com um serviço de terceiros, como Nodemailer
-    // Firebase automaticamente envia o link de redefinição de senha para o email.
+    // Envia o link de verificação para o e-mail
+    await admin.auth().sendEmailVerification(userRecord.uid);
 
     // Retornar uma resposta de sucesso
     res.status(200).json({
-      message: "Link de redefinição de senha enviado para o seu email."
+      message: "Link de verificação enviado para o seu e-mail. Por favor, verifique sua caixa de entrada."
     });
 
   } catch (error) {
     // Caso ocorra algum erro, retornamos a mensagem de erro
+    console.error("Erro ao enviar link de verificação:", error.message);
+    res.status(400).json({
+      message: `Erro ao enviar o link de verificação: ${error.message}`
+    });
+  }
+});
+
+// Rota para redefinir a senha (enviar o link de redefinição)
+app.post("/resetPassword", async (req, res) => {
+  const { email } = req.body;
+
+  // Verificação do formato do email
+  if (!email || !email.includes('@')) {
+    return res.status(400).json({
+      message: "Por favor, forneça um e-mail válido."
+    });
+  }
+
+  try {
+    // Verificar se o e-mail existe no Firebase Authentication
+    const userRecord = await admin.auth().getUserByEmail(email);
+
+    // Gerar o link de redefinição de senha
+    const resetLink = await admin.auth().generatePasswordResetLink(email);
+
+    // Enviar o link de redefinição de senha para o e-mail fornecido
+    // Firebase Admin SDK envia o e-mail automaticamente
+    await admin.auth().sendPasswordResetEmail(email);
+
+    // Retornar uma resposta de sucesso
+    res.status(200).json({
+      message: "Link de redefinição de senha enviado para o seu e-mail. Verifique sua caixa de entrada."
+    });
+
+  } catch (error) {
+    // Caso ocorra algum erro, retornamos a mensagem de erro
+    console.error("Erro ao enviar link de redefinição de senha:", error.message);
     res.status(400).json({
       message: `Erro ao enviar o link de redefinição de senha: ${error.message}`
     });
