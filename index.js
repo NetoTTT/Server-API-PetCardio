@@ -307,7 +307,6 @@ app.post("/verifyEmail", async (req, res) => {
   }
 });
 
-
 // Rota para redefinir a senha (enviar o link de redefinição)
 app.post("/resetPassword", async (req, res) => {
   const { email } = req.body;
