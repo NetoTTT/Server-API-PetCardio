@@ -5,6 +5,8 @@ const cors = require("cors");
 const { Parser } = require("json2csv");
 const fs = require("fs");
 const path = require("path");
+const nodemailer = require("nodemailer");
+
 
 const app = express();
 const PORT = 3000;
@@ -25,6 +27,14 @@ const ecgRef = db.ref("/ecgData");
 const dbfire = admin.firestore();
 
 let clients = [];
+
+const transporter = nodemailer.createTransport({
+  service: "gmail", // Ou qualquer serviço de e-mail que você preferir
+  auth: {
+    user: process.env.EMAIL_USER, // Seu e-mail
+    pass: process.env.EMAIL_PASS, // Sua senha de e-mail ou App Password
+  },
+});
 
 // Rota para cadastro de usuário
 app.post("/signup", async (req, res) => {
@@ -288,19 +298,32 @@ app.post("/verifyEmail", async (req, res) => {
     // Verificar se o e-mail existe no Firebase Authentication
     const userRecord = await admin.auth().getUserByEmail(email);
 
-    // Enviar o link de verificação para o e-mail fornecido
+    // Gerar o link de verificação de e-mail
     const verificationLink = await admin.auth().generateEmailVerificationLink(email);
 
-    // Envia o link de verificação para o e-mail
-    await admin.auth().sendEmailVerification(userRecord.uid);
+    // Configurar o e-mail de envio
+    const mailOptions = {
+      from: process.env.EMAIL_USER, // De onde o e-mail será enviado
+      to: email, // Para quem o e-mail será enviado
+      subject: "Verifique seu e-mail",
+      text: `Por favor, clique no seguinte link para verificar seu e-mail: ${verificationLink}`,
+    };
 
-    // Retornar uma resposta de sucesso
-    res.status(200).json({
-      message: "Link de verificação enviado para o seu e-mail. Por favor, verifique sua caixa de entrada."
+    // Enviar o e-mail
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error("Erro ao enviar e-mail:", error);
+        return res.status(500).json({
+          message: "Erro ao enviar o link de verificação. Tente novamente mais tarde.",
+        });
+      }
+
+      res.status(200).json({
+        message: "Link de verificação enviado para o seu e-mail. Por favor, verifique sua caixa de entrada.",
+      });
     });
   } catch (error) {
-    // Caso ocorra algum erro, retornamos a mensagem de erro
-    console.error("Erro ao enviar link de verificação:", error.message);
+    console.error("Erro ao gerar link de verificação:", error.message);
     res.status(400).json({
       message: `Erro ao enviar o link de verificação: ${error.message}`
     });
@@ -325,23 +348,35 @@ app.post("/resetPassword", async (req, res) => {
     // Gerar o link de redefinição de senha
     const resetLink = await admin.auth().generatePasswordResetLink(email);
 
-    // Enviar o link de redefinição de senha para o e-mail fornecido
-    // Firebase Admin SDK envia o e-mail automaticamente
-    await admin.auth().sendPasswordResetEmail(email);
+    // Configurar o e-mail de envio
+    const mailOptions = {
+      from: process.env.EMAIL_USER, // Seu e-mail
+      to: email, // Para quem o e-mail será enviado
+      subject: "Redefinição de Senha",
+      text: `Por favor, clique no seguinte link para redefinir sua senha: ${resetLink}`,
+    };
 
-    // Retornar uma resposta de sucesso
-    res.status(200).json({
-      message: "Link de redefinição de senha enviado para o seu e-mail. Verifique sua caixa de entrada."
+    // Enviar o e-mail
+    transporter.sendMail(mailOptions, (error, info) => {
+      if (error) {
+        console.error("Erro ao enviar e-mail:", error);
+        return res.status(500).json({
+          message: "Erro ao enviar o link de redefinição de senha. Tente novamente mais tarde.",
+        });
+      }
+
+      res.status(200).json({
+        message: "Link de redefinição de senha enviado para o seu e-mail. Por favor, verifique sua caixa de entrada.",
+      });
     });
-
   } catch (error) {
-    // Caso ocorra algum erro, retornamos a mensagem de erro
-    console.error("Erro ao enviar link de redefinição de senha:", error.message);
+    console.error("Erro ao gerar link de redefinição de senha:", error.message);
     res.status(400).json({
       message: `Erro ao enviar o link de redefinição de senha: ${error.message}`,
     });
   }
 });
+
 
 // Inicializar o servidor
 app.listen(PORT, () => {
