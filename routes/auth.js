@@ -1,5 +1,11 @@
+// Feito para estudos
+// Codigo base usando no index.js,  este codigo está desatualizado
+// utilize a fins de testes
+// Logica antiga
+
+
 const express = require("express");
-const { auth } = require("firebase-admin"); // Assumindo que você já configurou o Firebase Admin SDK
+const { auth } = require("firebase-admin"); 
 
 const router = express.Router();
 

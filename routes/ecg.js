@@ -1,4 +1,10 @@
 // routes/ecg.js
+// Feito para estudos
+// Codigo base usando no index.js, este codigo está desatualizado
+// utilize a fins de testes
+// Logica antiga
+
+
 const express = require("express");
 const { database } = require("firebase-admin");  // Agora já é possível usar o Firebase aqui diretamente
 

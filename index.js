@@ -14,7 +14,7 @@ const PORT = 3000;
 app.use(bodyParser.json());
 app.use(cors());
 
-// Configuração do Firebase
+// Configuração do Firebase (Com Variavis de Ambiente, coloque as suas suas credenciais)
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
@@ -50,7 +50,6 @@ app.post("/signup", async (req, res) => {
     if (userType === "veterinario") {
       // Verifica se o usuário autenticado tem permissão de 'admin'
       if (!req.user || req.user.role !== "admin") {
-        // Supondo que req.user seja o usuário autenticado
         return res.status(403).json({
           message: "Você não tem permissão para criar um veterinário!",
         });
@@ -63,7 +62,7 @@ app.post("/signup", async (req, res) => {
           .json({ message: "CPF é obrigatório para cadastro de veterinário!" });
       }
 
-      // Aqui, você pode validar o CPF de acordo com sua lógica, se necessário.
+      // Aqui, você pode validar o CPF.
     }
 
     // Criação do usuário no Firebase Authentication
@@ -151,7 +150,7 @@ app.post("/login", async (req, res) => {
         // Loga o email para o qual a verificação será enviada
         console.log("Enviando email de verificação para:", userRecord.email);
 
-        // Envia o email de verificação
+        // Envia o email de verificação // Desativado por escolha minha (Neto)
         const verificationLink = await admin
           .auth()
           .generateEmailVerificationLink(userRecord.email);
